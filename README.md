@@ -96,7 +96,7 @@ cp .env.example .env
 
 - Add custom bangs through the UI
 - Modify the default search engine
-- Customize the CSS in `index.html` and `customize.html`
+- Customize the CSS in `index.html`
 
 ## License
 

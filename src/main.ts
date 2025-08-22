@@ -306,6 +306,81 @@ async function sendBangsToSupabase() {
   }
 }
 
+// Sync a single bang with Supabase
+async function syncSingleBangWithSupabase(bang: Bang, isNew: boolean) {
+  if (!supabase) return;
+  
+  try {
+    const now = new Date().toISOString();
+    
+    // Update the specific bang in Supabase
+    const { error } = await supabase
+      .from('bangs')
+      .upsert({
+        key: bang.t,
+        name: bang.s,
+        url: bang.u,
+        domain: bang.d,
+        updated_at: now
+      });
+    
+    if (error) {
+      console.warn('Error syncing single bang with Supabase:', error);
+      return;
+    }
+    
+    // Update metadata timestamp
+    await supabase
+      .from('metadata')
+      .upsert({ 
+        key: 'bangs_last_updated', 
+        last_updated: now 
+      });
+    
+    // Update local sync time
+    localStorage.setItem('lastSyncTime', now);
+    
+    console.log(`Successfully synced bang '${bang.t}' with Supabase`);
+  } catch (err) {
+    console.warn('Error syncing single bang with Supabase:', err);
+  }
+}
+
+// Delete a bang from Supabase
+async function deleteBangFromSupabase(bang: Bang) {
+  if (!supabase) return;
+  
+  try {
+    const now = new Date().toISOString();
+    
+    // Delete the specific bang from Supabase
+    const { error } = await supabase
+      .from('bangs')
+      .delete()
+      .eq('key', bang.t);
+    
+    if (error) {
+      console.warn('Error deleting bang from Supabase:', error);
+      return;
+    }
+    
+    // Update metadata timestamp
+    await supabase
+      .from('metadata')
+      .upsert({ 
+        key: 'bangs_last_updated', 
+        last_updated: now 
+      });
+    
+    // Update local sync time
+    localStorage.setItem('lastSyncTime', now);
+    
+    console.log(`Successfully deleted bang '${bang.t}' from Supabase`);
+  } catch (err) {
+    console.warn('Error deleting bang from Supabase:', err);
+  }
+}
+
 // Save bang (add or edit)
 async function saveBang(e: Event) {
   e.preventDefault();
@@ -318,7 +393,9 @@ async function saveBang(e: Event) {
     d: bangDomainInput.value
   };
   
-  if (index === '') {
+  const isNew = index === '';
+  
+  if (isNew) {
     // Add new bang
     customBangs.push(bang);
   } else {
@@ -336,11 +413,11 @@ async function saveBang(e: Event) {
   closeBangModal();
   
   // Sync with Supabase
-  await sendBangsToSupabase();
+  await syncSingleBangWithSupabase(bang, isNew);
 }
 
 // Enhanced deleteBang function with Supabase sync
-function deleteBang() {
+async function deleteBang() {
   const indexStr = editIndexInput.value;
   if (indexStr === '') {
     alert('No bang selected for deletion.');
@@ -359,19 +436,22 @@ function deleteBang() {
     // This condition should never be true, but we keep it for safety
     console.warn("Unexpected index for default bangs");
   } else {
+    // Get the bang to delete
+    const bangToDelete = customBangs[index];
+    
     // For custom bangs, we delete them
     // Since we're not using default bangs, we can directly splice from customBangs
     customBangs.splice(index, 1);
     // Save to localStorage
     localStorage.setItem('customBangs', JSON.stringify(customBangs));
+    
+    // Try to delete from Supabase
+    await deleteBangFromSupabase(bangToDelete);
   }
   
   // Update last sync time
   const now = new Date().toISOString();
   localStorage.setItem('lastSyncTime', now);
-  
-  // Try to sync with Supabase
-  sendBangsToSupabase();
   
   // Refresh bangs
   mergeBangs();
@@ -732,7 +812,10 @@ async function loadBangsFromSupabase() {
       return;
     }
     
+    const module = await import('@supabase/supabase-js');
+    const { createClient } = module;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
     const { data, error } = await supabase
       .from('bangs')
       .select('*');
@@ -776,10 +859,7 @@ async function loadBangsFromSupabase() {
 function showCreateFirstBangPopup() {
   // For now, we'll just show an alert
   // In a real implementation, you'd show a modal popup
-  alert("No bangs found in database. Please go to the customize page to add some bangs.");
-  
-  // Optionally redirect to customize page
-  // window.location.href = "/customize.html";
+  alert("No bangs found in database. Please add some bangs using the 'Add Custom Bang' button.");
 }
 
 // Show popup to create table
@@ -811,6 +891,8 @@ async function createFirstBang() {
       return;
     }
     
+    const module = await import('@supabase/supabase-js');
+    const { createClient } = module;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Example first bang
@@ -849,6 +931,8 @@ async function syncBangsWithSupabase() {
       return;
     }
     
+    const module = await import('@supabase/supabase-js');
+    const { createClient } = module;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Get bangs from localStorage
