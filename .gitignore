@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+QWEN.md
+.geminiignore
+.env
+SUPABASE.md
+GEMINI.md
