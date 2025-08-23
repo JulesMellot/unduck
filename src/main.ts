@@ -643,7 +643,7 @@ function renderBangsGrid() {
     bangCard.innerHTML = `
       <div class="bang-header">
         <div class="bang-key">!${bang.t}</div>
-        <button class="edit-bang-btn" data-bang-key="${bang.t}" data-is-custom="${isCustomBang}">✏️</button>
+        <button class="edit-bang-btn" data-bang-key="${bang.t}" data-is-custom="${isCustomBang}"><i class="fa-solid fa-pencil"></i></button>
       </div>
       <div class="bang-name">${bang.s}</div>
       <div class="bang-domain">${bang.d}</div>
